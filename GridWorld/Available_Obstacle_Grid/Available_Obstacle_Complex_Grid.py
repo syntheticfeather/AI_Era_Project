@@ -5,10 +5,10 @@ import os
 # 本agent将训练牺牲一定的reward，以便更快到达目标点
 
 
-string = "q_table3.npy"
+string = "q_table4.npy"
 
 # 网格参数
-GRID_SIZE = 20  # 10x10网格
+GRID_SIZE = 20  # 21x21网格
 CELL_SIZE = 25  # 每个格子像素大小
 # 在初始化时根据目标数量动态计算状态码范围
 NUM_GOALS = 3
@@ -57,18 +57,55 @@ class GridEnv:
         return self._get_state()  # 返回初始状态
 
     def _place_obstacles(self):
-        for i in [9, 10]:
-            for j in range(0, 20):
-                self.grid[i][j] = 1  # 黑色障碍物
-                self.grid[j][i] = 1
-        for i in [9, 10]:
-            for j in [0, 19]:
-                self.grid[i][j] = 3  # 可通过的橙色障碍物
-                self.grid[j][i] = 3
-        for i in [8, 11]:
-            for j in [9, 10]:
-                self.grid[i][j] = 0  # 绘制远路
-                self.grid[j][i] = 0
+        # 设计一个复杂的迷宫式障碍物布局
+        # 横向障碍
+        for x in range(4, 18):
+            self.grid[x][5] = 1  # 横向障碍
+        for x in range(0, 10):
+            self.grid[x][15] = 1  # 横向障碍
+        for x in range(11, 14):
+            self.grid[x][15] = 1  # 横向障碍
+        for x in range(6, 13):
+            self.grid[x][9] = 1  # 横向障碍
+        for x in range(6, 20):
+            self.grid[x][7] = 1  # 横向障碍
+        for x in range(0, 14):
+            self.grid[x][18] = 1  # 横向障碍
+
+        # # 纵向障碍
+        for y in range(3, 13):
+            self.grid[1][y] = 1  # 纵向障碍
+        for y in range(13, 20):
+            self.grid[15][y] = 1  # 纵向障碍
+        for y in range(9, 12):
+            self.grid[10][y] = 1  # 纵向障碍
+        #
+        # # 小型障碍块
+        for x in range(4, 6):
+            for y in range(0, 4):
+                self.grid[x][y] = 1
+        for x in range(4, 6):
+            for y in range(11, 15):
+                self.grid[x][y] = 1
+        for x in range(7, 19, 4):
+            for y in range(1, 5):
+                self.grid[x][y] = 1
+        for x in range(9, 19, 4):
+            for y in range(0, 4):
+                self.grid[x][y] = 1
+        for x in range(17, 20):
+            for y in range(9, 18):
+                self.grid[x][y] = 1
+        # 可通过的障碍物
+        self.grid[6][15] = 3  # 可通过的橙色障碍物
+        self.grid[7][4] = 3  # 可通过的橙色障碍物
+        self.grid[19][7] = 3  # 可通过的橙色障碍物
+        self.grid[0][18] = 3  # 可通过的橙色障碍物
+        for i in range(9, 18):
+            self.grid[19][i] = 3  # 随机生成障碍物
+        for x in range(3, 5):
+            for y in range(7, 10):
+                self.grid[x][y] = 3
 
     def step(self, action):
         x, y = self.agent_pos
@@ -142,15 +179,15 @@ class GridEnv:
         self.clock.tick(tt)  # 控制渲染帧率
 
 
-def train():
+def train(endless_train=False):
     # 超参数
     alpha = 0.1  # 学习率
-    gamma = 0.99  # 折扣因子
-    epsilon = 0.3  # 探索率
+    gamma = 0.95  # 折扣因子
     env = GridEnv()
     num_episodes = 100
     run_done = False
-    while not run_done:
+    while not run_done and endless_train:
+        epsilon = 0.6  # 探索率
         for _ in range(num_episodes):
             ############################### 查看你想要的东西
             print("Episode:", _)
@@ -192,8 +229,8 @@ def train():
             ############################### 查看你想要的东西
             # print(f"step: {1000 - Max_steps}", "reward:", reward_sum)
         run_done = run_policy()  # 现在每一百次训练，都运行一次策略
+        np.save(string, Q)  # 保存为二进制文件
         ############################### 查看你想要的东西
-    np.save(string, Q)  # 保存为二进制文件
     ############################### 查看你想要的东西
     print("Training completed!")
     ############################### 查看你想要的东西
@@ -206,7 +243,7 @@ def run_policy():
     done = False
     step = 0
     reward_sum = 0
-    while not done and step < 1000:
+    while not done and step < 300:
         action = np.argmax(Q[state[0], state[1], state[2]])
         state, _, done = env.step(action)
         ############################### 查看你想要的东西
@@ -225,11 +262,11 @@ def run_policy():
 def reset_Q(Q):
     Q = np.ones((GRID_SIZE, GRID_SIZE, STATE_CODE_SIZE, 4))  # 形状 (10,10,8,4)
     np.save(string, Q)  # 保存为二进制文件
-    # print(Q)
+    print("Q table reset!")
 
 
 tt = 10000  # 控制训练速度
-run_tt = 10  # 控制查看效果速度
+run_tt = 100  # 控制查看效果速度
 
 if __name__ == "__main__":
     # 初始化Q表：状态为(x,y)，动作为0-3
@@ -240,7 +277,6 @@ if __name__ == "__main__":
         # 加载时直接读取
         Q = np.load(string)
         print("Q table loaded!")
-    # print(Q)
-    train()  # 训练
-    # run_policy()  # # 看看效果
+    # train(endless_train=True)  # 训练/
+    run_policy()  # # 看看效果
     # reset_Q(Q)
