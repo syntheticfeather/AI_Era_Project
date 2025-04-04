@@ -2,6 +2,7 @@ import pygame
 import numpy as np
 import os
 
+# 本agent将训练到达多个目标点
 string = "q_table2.npy"
 
 # 网格参数
@@ -217,6 +218,6 @@ if __name__ == "__main__":
         # 加载时直接读取
         Q = np.load(string)
     # print(Q)
-    # train()
-    run_policy()
+    # train() # 训练
+    run_policy()  # 看看效果
     # reset_Q(Q)

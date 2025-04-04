@@ -2,7 +2,7 @@ import pygame
 import numpy as np
 import os
 
-from sympy import print_tree
+# 本agent将训练最简单的最优路线寻找。
 
 # 网格参数
 GRID_SIZE = 10  # 10x10网格
