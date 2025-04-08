@@ -8,7 +8,7 @@ import os
 string = "q_table3.npy"
 
 # 网格参数
-GRID_SIZE = 20  # 21x21网格
+GRID_SIZE = 20  # 20x20网格
 CELL_SIZE = 25  # 每个格子像素大小
 # 在初始化时根据目标数量动态计算状态码范围
 NUM_GOALS = 3

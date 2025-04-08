@@ -8,7 +8,7 @@ import os
 string = "q_table4.npy"
 
 # 网格参数
-GRID_SIZE = 20  # 21x21网格
+GRID_SIZE = 20  # 20x20网格
 CELL_SIZE = 25  # 每个格子像素大小
 # 在初始化时根据目标数量动态计算状态码范围
 NUM_GOALS = 3
@@ -23,6 +23,7 @@ COLORS = {
     "obstacle": (0, 0, 0),
     "available_obstacle": (255, 165, 0),
     "grid_line": (200, 200, 200),
+    "reached_goal": (0, 255, 0),
 }
 
 
@@ -168,7 +169,7 @@ class GridEnv:
                                        (y * CELL_SIZE + CELL_SIZE // 2, x * CELL_SIZE + CELL_SIZE // 2), CELL_SIZE // 3)
                 elif (x, y) in self.goals and self.goals_done[self.goals.index((x, y))]:
                     # 绘制已完成目标
-                    pygame.draw.circle(self.screen, (0, 255, 0),
+                    pygame.draw.circle(self.screen, COLORS["reached_goal"],
                                        (y * CELL_SIZE + CELL_SIZE // 2, x * CELL_SIZE + CELL_SIZE // 2), CELL_SIZE // 3)
         # 绘制Agent
         pygame.draw.circle(self.screen, COLORS["agent"],
@@ -240,6 +241,8 @@ def train(endless_train=False):
 def run_policy():
     env = GridEnv()
     state = env.reset()
+    # 打印agent所在位置
+    print(f"[{state[0]},{state[1]}]", end=",")
     done = False
     step = 0
     reward_sum = 0
@@ -247,14 +250,13 @@ def run_policy():
         action = np.argmax(Q[state[0], state[1], state[2]])
         state, _, done = env.step(action)
         ############################### 查看你想要的东西
-        print("step:", step, "action:", action, "state:", state)
+        print(f"[{state[0]},{state[1]}]", end=",")
         step += 1
         reward_sum += 0  # 这里不给奖励，只看看效果
         ############################### 查看你想要的东西
         env.render()  # 实时显示移动过程
         env.clock.tick(run_tt)  # 控制速度
     ############################### 查看你想要的东西
-    print("Total steps:", step, "Total reward:", reward_sum)
     ############################### 查看你想要的东西
     return done
 
@@ -266,7 +268,7 @@ def reset_Q(Q):
 
 
 tt = 10000  # 控制训练速度
-run_tt = 100  # 控制查看效果速度
+run_tt = 1  # 控制查看效果速度
 
 if __name__ == "__main__":
     # 初始化Q表：状态为(x,y)，动作为0-3
@@ -280,3 +282,18 @@ if __name__ == "__main__":
     # train(endless_train=True)  # 训练/
     run_policy()  # # 看看效果
     # reset_Q(Q)
+
+Road = [[0, 0], [1, 0], [1, 1], [2, 1], [2, 2], [2, 3], [2, 4], [3, 4],
+        [3, 5], [3, 6], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6],
+        [10, 6], [11, 6], [12, 6], [13, 6], [14, 6], [15, 6], [16, 6],
+        [17, 6], [18, 6], [18, 5], [18, 4], [18, 3], [19, 3], [19, 2],
+        [19, 1], [19, 0], [19, 1], [19, 2], [19, 3], [19, 4], [19, 5],
+        [19, 6], [19, 7], [19, 8], [18, 8], [17, 8], [16, 8], [16, 9],
+        [16, 10], [16, 11], [16, 12], [16, 13], [16, 14], [16, 15],
+        [16, 16], [16, 17], [16, 18], [17, 18], [18, 18], [18, 19],
+        [19, 19], [18, 19], [17, 19], [17, 18], [16, 18], [16, 17],
+        [16, 16], [16, 15], [16, 14], [16, 13], [16, 12], [15, 12],
+        [14, 12], [13, 12], [12, 12], [11, 12], [11, 13], [11, 14],
+        [10, 14], [10, 15], [10, 16], [9, 16], [9, 17], [8, 17], [7, 17],
+        [6, 17], [5, 17], [4, 17], [3, 17], [2, 17], [1, 17],
+        [0, 17], [0, 18], [0, 19], [0, 19], ]
