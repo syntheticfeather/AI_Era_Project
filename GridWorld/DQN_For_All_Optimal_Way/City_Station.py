@@ -2,8 +2,12 @@ import numpy as np
 import pygame
 from sklearn.cluster import KMeans
 
+# 在_place_obstacles中初始化地图
+# 通过机器学习Kmeans算法自动聚类放置目标点
+# 给目标点坐标
+
 # 全局常量配置
-GRID_SIZE = 21
+GRID_SIZE = 40
 SCREEN_SIZE = 800
 CELL_SIZE = SCREEN_SIZE // GRID_SIZE  # 每个格子像素大小
 NUM_GOALS = 3  # 默认目标点数（当auto_k=False时生效）
@@ -19,7 +23,7 @@ COLORS = {
 
 
 class GridEnv:
-    def __init__(self, n_clusters=3, auto_k=False, max_k=10):
+    def __init__(self, n_clusters=5, auto_k=False, max_k=10):
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
         self.clock = pygame.time.Clock()
@@ -43,29 +47,22 @@ class GridEnv:
         self.agent_pos = [0, 0]
 
     def _place_obstacles(self):
-        """固定障碍物布局（与原始代码一致）"""
-        # ...（保持原有障碍物生成逻辑不变）
-        for x in range(1, 5):
-            for y in range(1, 5):
-                self.grid[x][y] = 1
-        for x in range(1, 5):
-            for y in range(6, 10):
-                self.grid[x][y] = 1
-        for x in range(1, 5):
-            for y in range(11, 15):
-                self.grid[x][y] = 1
-        for x in range(1, 5):
-            for y in range(16, 20):
-                self.grid[x][y] = 1
-        for x in range(6, 8):
-            for y in range(1, 20):
-                self.grid[x][y] = 1
-        for x in range(9, 20):
-            for y in range(1, 10):
-                self.grid[x][y] = 1
-        for x in range(9, 20):
-            for y in range(11, 20):
-                self.grid[x][y] = 1
+        # 固定种子生成可重复地形
+        seed = 50
+        rng = np.random.RandomState(seed)  # 创建独立随机数生成器
+
+        for i in range(GRID_SIZE):
+            for j in range(GRID_SIZE):
+                if i == 0 or i == GRID_SIZE - 1 or j == 0 or j == GRID_SIZE - 1:
+                    self.grid[i][j] = 0
+                else:
+                    np.random.seed(seed)
+                    if np.random.rand() < 0.2:
+                        self.grid[i][j] = 1  # 随机障碍物
+                        seed += 1
+                    else:
+                        self.grid[i][j] = 0  # 空地
+                        seed += 1
 
     def _get_passable_points(self):
         """获取所有可通行点坐标"""
@@ -127,7 +124,7 @@ class GridEnv:
         kmeans = KMeans(n_clusters=self.n_clusters, random_state=42)
         kmeans.fit(points, sample_weight=weights)
         centroids = kmeans.cluster_centers_.astype(int)
-
+        print("Cluster centroids:", centroids)
         # 放置目标点
         self.placed_goals = []
         for (x, y) in centroids:
@@ -136,6 +133,18 @@ class GridEnv:
             if self.grid[x][y] == 0 and (x, y) not in self.placed_goals:
                 self.grid[x][y] = 2
                 self.placed_goals.append((x, y))
+            elif self.grid[x][y] == 1:
+                flag = False
+                # 在周围八个格子中随机选择一个空地作为红点
+                for dx in [-1, 0, 1]:
+                    if flag: break
+                    for dy in [-1, 0, 1]:
+                        if flag: break
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE and self.grid[nx][ny] == 0:
+                            self.grid[nx][ny] = 2
+                            self.placed_goals.append((nx, ny))
+                            flag = True
 
     def reset(self, new_k=None):
         """重置环境并可选新K值"""
@@ -232,7 +241,7 @@ class GridEnv:
 # 使用示例
 if __name__ == "__main__":
     # 创建环境（自动选择K值）
-    env = GridEnv(auto_k=True, max_k=8)
+    env = GridEnv(n_clusters=5, auto_k=False, max_k=8)
 
     # 可视化初始状态
     env.render()
