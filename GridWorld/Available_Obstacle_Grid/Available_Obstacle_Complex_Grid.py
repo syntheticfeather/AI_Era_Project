@@ -33,7 +33,7 @@ class GridEnv:
         self.screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
         self.clock = pygame.time.Clock()
 
-        # 初始化地图：0=空地，1=障碍，2=目标, 3为可通过的空地
+        # 初始化地图：0=空地，1=障碍，2=目标, 3为可通过的空地, A 为 agent
         self.grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=int)
 
         # 定义多个目标点（示例为三个角落）
@@ -242,7 +242,7 @@ def run_policy():
     env = GridEnv()
     state = env.reset()
     # 打印agent所在位置
-    print(f"[{state[0]},{state[1]}]", end=",")
+    # print(f"[{state[0]},{state[1]}]", end=",")
     done = False
     step = 0
     reward_sum = 0
@@ -250,7 +250,7 @@ def run_policy():
         action = np.argmax(Q[state[0], state[1], state[2]])
         state, _, done = env.step(action)
         ############################### 查看你想要的东西
-        print(f"[{state[0]},{state[1]}]", end=",")
+        # print(f"[{state[0]},{state[1]}]", end=",")
         step += 1
         reward_sum += 0  # 这里不给奖励，只看看效果
         ############################### 查看你想要的东西
@@ -279,6 +279,8 @@ if __name__ == "__main__":
         # 加载时直接读取
         Q = np.load(string)
         print("Q table loaded!")
+    env = GridEnv()
+    print(env.grid)
     # train(endless_train=True)  # 训练/
     run_policy()  # # 看看效果
     # reset_Q(Q)

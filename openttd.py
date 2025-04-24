@@ -56,14 +56,10 @@ class DynamicGridWorld:
         else:
             # 基于曼哈顿距离的渐进奖励
             current_dist = abs(self.goal_pos[0] - ax) + abs(self.goal_pos[1] - ay)
-            reward = (1 - current_dist / (2 * self.size)) * 0.5  # 距离奖励
+            reward = current_dist  # 距离奖励
             # 添加方向奖励（鼓励朝向目标移动）
             dx = self.goal_pos[0] - ax
             dy = self.goal_pos[1] - ay
-            if (action == 0 and dx > 0) or (action == 1 and dx < 0):
-                reward += 0.2
-            if (action == 2 and dy > 0) or (action == 3 and dy < 0):
-                reward += 0.2
 
         self.agent_pos = new_pos
         return self._get_state(), reward, done, {}
