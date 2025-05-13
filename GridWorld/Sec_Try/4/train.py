@@ -80,7 +80,7 @@ def train_model(env, callback=None):
                 break
 
         if callback and callback(i_episode, total_reward):
-            print("提前终止训练")
+            print("Training stopped early")
             break
 
         if i_episode % TARGET_UPDATE == 0:
