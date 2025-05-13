@@ -20,17 +20,21 @@ COLORS = {
 
 
 class Environment:
-    def __init__(self, grid_size=10, obstacle_density=0.2, render_mode="human"):
+    def __init__(self, grid_size=10, obstacle_density=0.2, render_mode="human", obstacles=None):
         self.grid_size = grid_size
         self.cell_size = 40
         self.window_size = self.grid_size * self.cell_size
         self.obstacle_density = obstacle_density
         self.render_mode = render_mode
-
-        # 生成连通的障碍物布局
         self.obstacles = None
-        self.generate_connected_obstacles()
 
+        # 障碍物布局
+        if obstacles is not None:
+            self.obstacles = obstacles
+        else:
+            self.generate_connected_obstacles()
+
+        # agent位置
         self.agent_pos = self._random_free_position()
         self.target_pos = self._random_free_position()
 
