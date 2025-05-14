@@ -37,10 +37,10 @@ class TrainingVisualizer:
 
 
 class GridWorldGUI:
-    def __init__(self, master, grid_size=20):
+    def __init__(self, master, grid_size=40):
         self.master = master
         self.grid_size = grid_size
-        self.cell_size = 40
+        self.cell_size = 20
         self.obstacles = np.zeros((grid_size, grid_size), dtype=bool)
 
         # 加载地图数据

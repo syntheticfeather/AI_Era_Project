@@ -22,7 +22,7 @@ COLORS = {
 class Environment:
     def __init__(self, grid_size=10, obstacle_density=0.2, render_mode="human", obstacles=None):
         self.grid_size = grid_size
-        self.cell_size = 40
+        self.cell_size = 20
         self.window_size = self.grid_size * self.cell_size
         self.obstacle_density = obstacle_density
         self.render_mode = render_mode
