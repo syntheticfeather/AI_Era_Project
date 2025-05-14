@@ -156,20 +156,20 @@ class Environment:
 
         # 边界检查
         if x < 0 or x >= self.grid_size or y < 0 or y >= self.grid_size:
-            reward = -10.0
+            reward = -5
             done = True
         elif (x, y) == self.target_pos:
-            reward = 10.0
+            reward = 10
             self.rate += 1
             print("reach goal")
             done = True
         elif self.obstacles[x, y]:
-            reward = -10.0
+            reward = -5
             done = True
         else:
             old_dist = abs(prev_pos[0] - self.target_pos[0]) + abs(prev_pos[1] - self.target_pos[1])
             new_dist = abs(x - self.target_pos[0]) + abs(y - self.target_pos[1])
-            reward += 2 * (old_dist - new_dist)
+            reward += 1.5 * (old_dist - new_dist)
 
         if not done:
             self.agent_pos = (x, y)

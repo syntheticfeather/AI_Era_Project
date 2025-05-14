@@ -6,19 +6,22 @@ import numpy as np
 from dqn_model import DQN
 from replay_buffer import ReplayBuffer
 import os
+import math
+import random
 
 # 新增配置参数
 MODEL_PATH = "dqn_model.pth"
 RESUME_TRAINING = True  # 是否继续上次训练
 TOTAL_EPISODES = 20000  # 总训练回合数（包括之前训练的）
 
-BATCH_SIZE = 64
-GAMMA = 0.99
-LR = 1e-4
+BATCH_SIZE = 128
+GAMMA = 0.95
+LR = 3e-4
 EPS_START = 1.0
 EPS_END = 0.01
-EPS_DECAY = 10000
-TARGET_UPDATE = 10
+EPS_DECAY = 20000
+TARGET_UPDATE = 200
+NOISE_SCALE = 0.3  # 新增动作噪声
 
 TT = 0
 
@@ -49,16 +52,19 @@ def train_model(env, callback=None):
 
     def select_action(state):
         nonlocal steps_done
-        sample = np.random.random()
+        sample = random.random()
         eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-                        np.exp(-1. * steps_done / EPS_DECAY)
+                        math.exp(-1. * steps_done / EPS_DECAY)
         steps_done += 1
 
         if sample > eps_threshold:
             with torch.no_grad():
-                return policy_net(state.unsqueeze(0).to(device)).argmax().view(1)
+                # 添加动作噪声
+                q_values = policy_net(state.unsqueeze(0).to(device))
+                noise = torch.randn_like(q_values) * NOISE_SCALE
+                return (q_values + noise).argmax().view(1)
         else:
-            return torch.tensor([np.random.randint(0, 3)], device=device)
+            return torch.tensor([[random.randint(0, 3)]], device=device)
 
     def optimize_model():
         if len(replay_buffer) < BATCH_SIZE:

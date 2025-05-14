@@ -37,7 +37,7 @@ class TrainingVisualizer:
 
 
 class GridWorldGUI:
-    def __init__(self, master, grid_size=40):
+    def __init__(self, master, grid_size=10):
         self.master = master
         self.grid_size = grid_size
         self.cell_size = 20
