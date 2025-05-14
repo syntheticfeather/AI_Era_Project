@@ -5,6 +5,12 @@ import torch.nn.functional as F
 import numpy as np
 from dqn_model import DQN
 from replay_buffer import ReplayBuffer
+import os
+
+# 新增配置参数
+MODEL_PATH = "dqn_model.pth"
+RESUME_TRAINING = True  # 是否继续上次训练
+TOTAL_EPISODES = 20000  # 总训练回合数（包括之前训练的）
 
 BATCH_SIZE = 64
 GAMMA = 0.99
@@ -14,18 +20,32 @@ EPS_END = 0.01
 EPS_DECAY = 10000
 TARGET_UPDATE = 10
 
+TT = 0
+
 
 def train_model(env, callback=None):
+    global TT
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     policy_net = DQN().to(device)
     target_net = DQN().to(device)
-    target_net.load_state_dict(policy_net.state_dict())
-    target_net.eval()
-
     optimizer = optim.Adam(policy_net.parameters(), lr=LR)
     replay_buffer = ReplayBuffer(10000)
+
+    # 加载已有模型和训练状态
+    start_episode = 0
     steps_done = 0
+
+    if RESUME_TRAINING and os.path.exists(MODEL_PATH):
+        checkpoint = torch.load(MODEL_PATH)
+        policy_net.load_state_dict(checkpoint['model'])
+        target_net.load_state_dict(checkpoint['model'])  # 使用相同模型初始化target网络
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        start_episode = checkpoint['episode']
+        steps_done = checkpoint['steps_done']
+        print(f"从 {MODEL_PATH} 加载模型，继续训练从第 {start_episode} 回合开始")
+
+    target_net.eval()
 
     def select_action(state):
         nonlocal steps_done
@@ -60,32 +80,47 @@ def train_model(env, callback=None):
         loss.backward()
         optimizer.step()
 
-    num_episodes = 1000
-    for i_episode in range(num_episodes):
+    # 训练循环
+    for i_episode in range(start_episode, TOTAL_EPISODES):
         state = env.reset()
         total_reward = 0
-
         while True:
             action = select_action(state)
             next_state, reward, done = env.step(action.item())
             total_reward += reward
 
             replay_buffer.push(state, action, reward, next_state, done)
-
             optimize_model()
 
             state = next_state
 
             if done:
                 break
+        print(f"回合 {i_episode} 奖励 {total_reward}")
 
         if callback and callback(i_episode, total_reward):
             print("Training stopped early")
+            TT = i_episode
             break
 
+        # 定期更新target网络和保存模型
         if i_episode % TARGET_UPDATE == 0:
             target_net.load_state_dict(policy_net.state_dict())
 
-        print(f"Episode {i_episode}, Total reward: {total_reward}")
+            # 保存完整训练状态（每100回合）
+            if i_episode % 50 == 0:
+                torch.save({
+                    'episode': i_episode,
+                    'model': policy_net.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'steps_done': steps_done
+                }, MODEL_PATH)
+                print(env.rate / (i_episode + 1))
 
-    torch.save(policy_net.state_dict(), "dqn_model.pth")
+    # 最终保存模型
+    torch.save({
+        'episode': TT,
+        'model': policy_net.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'steps_done': steps_done
+    }, MODEL_PATH)

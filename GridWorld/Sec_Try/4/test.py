@@ -14,26 +14,30 @@ class Tester:
 
         self.model = DQN().to(self.device)
         try:
-            self.model.load_state_dict(torch.load("dqn_model.pth"))
-            print("成功加载训练模型")
+            checkpoint = torch.load("dqn_model.pth")
+            self.model.load_state_dict(checkpoint['model'])
+            print("Model loaded successfully")
         except:
-            print("未找到训练模型，使用随机策略")
+            print("No trained model found, using random policy")
 
         self.model.eval()
         self.render_delay = 50
 
-    def run(self, callback=None):
+    def run(self, stop_callback=None, status_callback=None):
         success_count = 0
         total_steps = 0
         test_episodes = 10
 
         for episode in range(test_episodes):
+            if stop_callback and stop_callback():
+                break
+
             state = self.env.reset()
             total_reward = 0
             steps = 0
             done = False
 
-            while not done:
+            while not done and not (stop_callback and stop_callback()):
                 for event in pygame.event.get():
                     if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                         pygame.quit()
@@ -50,8 +54,8 @@ class Tester:
                 steps += 1
                 state = next_state
 
-                if callback:
-                    callback(episode, steps, self.env.agent_pos)
+                if status_callback:
+                    status_callback(episode, steps, self.env.agent_pos)
 
                 if done:
                     if reward > 0:
@@ -59,12 +63,11 @@ class Tester:
                     total_steps += steps
                     break
 
-        final_status = (f"成功率: {success_count / test_episodes * 100:.1f}%\n"
-                        f"平均步数: {total_steps / test_episodes:.1f}")
-        if callback:
-            callback(final=final_status)
+        final_status = (f"Success Rate: {success_count / test_episodes * 100:.1f}%\n"
+                        f"Average Steps: {total_steps / test_episodes:.1f}")
+        if status_callback:
+            status_callback(final_status)
 
-        pygame.quit()
         return final_status
 
 
