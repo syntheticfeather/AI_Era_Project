@@ -12,7 +12,7 @@ import random
 # 新增配置参数
 MODEL_PATH = "dqn_model.pth"
 RESUME_TRAINING = True  # 是否继续上次训练
-TOTAL_EPISODES = 20000  # 总训练回合数（包括之前训练的）
+TOTAL_EPISODES = 200000  # 总训练回合数（包括之前训练的）
 
 BATCH_SIZE = 128
 GAMMA = 0.95

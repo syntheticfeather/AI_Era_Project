@@ -22,7 +22,7 @@ COLORS = {
 class Environment:
     def __init__(self, grid_size=10, obstacle_density=0.2, render_mode="human", obstacles=None):
         self.grid_size = grid_size
-        self.cell_size = 20
+        self.cell_size = 40
         self.window_size = self.grid_size * self.cell_size
         self.obstacle_density = obstacle_density
         self.render_mode = render_mode
@@ -42,6 +42,12 @@ class Environment:
         pygame.display.set_caption("Grid World")
         self.clock = pygame.time.Clock()
         self.rate = 0
+
+        # 新增路径记忆参数
+        self.path_memory_enabled = True  # 是否启用路径记忆
+        self.visited_penalty = -0.3  # 重复访问惩罚系数
+        self.visited_decay = 0.9  # 位置记忆衰减系数
+        self.position_memory = {}  # 带衰减的位置记忆字典
 
     @staticmethod
     def save_map(obstacles, filename='saved_map.npy'):
@@ -106,13 +112,14 @@ class Environment:
         self.agent_pos = self._random_free_position()
         self.target_pos = self._random_free_position()
         self.visited_positions = [self.agent_pos]  # 重置路径记录
+        self.position_memory = {}  # 重置记忆
         return self.get_state()
 
     def get_state(self):
         """返回5x5局部观察"""
         half_size = size // 2
         ax, ay = self.agent_pos
-        state = np.zeros((3, size, size), dtype=np.float32)
+        state = np.zeros((6, size, size), dtype=np.float32)
 
         # 障碍物通道
         for dx in range(-half_size, half_size + 1):
@@ -130,9 +137,25 @@ class Environment:
         # 目标位置指示
         tx_rel = self.target_pos[0] - (ax - half_size)
         ty_rel = self.target_pos[1] - (ay - half_size)
-        tx_rel = max(0, min(size - 1, tx_rel))
-        ty_rel = max(0, min(size - 1, ty_rel))
-        state[2, tx_rel, ty_rel] = 1.0
+        if 0 <= tx_rel < size and 0 <= ty_rel < size:
+            state[2, tx_rel, ty_rel] = 1.0
+
+        # 新增全局方向通道（归一化到[-1,1]）
+        dx = (self.target_pos[0] - ax) / self.grid_size
+        dy = (self.target_pos[1] - ay) / self.grid_size
+        state[3, :, :] = dx  # 第四通道填充dx
+        state[4, :, :] = dy  # 第五通道填充dy
+
+        # 新增路径记忆通道（第5通道）
+        for dx in range(-half_size, half_size + 1):
+            for dy in range(-half_size, half_size + 1):
+                x = ax + dx
+                y = ay + dy
+                if 0 <= x < self.grid_size and 0 <= y < self.grid_size:
+                    # 使用衰减后的记忆值
+                    state[5, dx + half_size, dy + half_size] = self.position_memory.get((x, y), 0.0)
+                else:
+                    state[5, dx + half_size, dy + half_size] = 0.0
 
         return torch.tensor(state)
 
@@ -152,7 +175,7 @@ class Environment:
             y += 1
 
         done = False
-        reward = -1
+        reward = -2
 
         # 边界检查
         if x < 0 or x >= self.grid_size or y < 0 or y >= self.grid_size:
@@ -169,12 +192,24 @@ class Environment:
         else:
             old_dist = abs(prev_pos[0] - self.target_pos[0]) + abs(prev_pos[1] - self.target_pos[1])
             new_dist = abs(x - self.target_pos[0]) + abs(y - self.target_pos[1])
-            reward += 1.5 * (old_dist - new_dist)
+            reward += 4 * (old_dist - new_dist)
 
-        if not done:
+        if not done and self.path_memory_enabled:
             self.agent_pos = (x, y)
             if self.agent_pos not in self.visited_positions:  # 记录新位置
                 self.visited_positions.append(self.agent_pos)
+            # 衰减已有记忆
+            for pos in self.position_memory:
+                self.position_memory[pos] *= self.visited_decay
+            # 更新当前位置记忆
+            visit_count = self.position_memory.get(self.agent_pos, 0) + 1
+            self.position_memory[self.agent_pos] = min(visit_count, 1.0)  # 归一化
+
+            # 添加动态惩罚
+            if visit_count > 1:
+                reward += self.visited_penalty * visit_count
+            else:
+                reward += 1
 
         return self.get_state(), reward, done
 

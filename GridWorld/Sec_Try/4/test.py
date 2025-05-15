@@ -67,7 +67,7 @@ class Tester:
                         f"Average Steps: {total_steps / test_episodes:.1f}")
         if status_callback:
             status_callback(final_status)
-
+        print(final_status)
         return final_status
 
 

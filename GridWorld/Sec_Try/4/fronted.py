@@ -14,33 +14,52 @@ import test
 
 
 class TrainingVisualizer:
-    def __init__(self, master):
+    def __init__(self, master, show_visualizer=True):  # 新增显示控制参数
         self.master = master
+        self.show = show_visualizer  # 保存显示状态
+
+        # 初始化图形组件
         self.fig, self.ax = plt.subplots(figsize=(6, 4))
         self.ax.set_title("Training Progress")
-        self.ax.set_xlabel("Episodes")
         self.ax.set_ylabel("Average Reward")
         self.line, = self.ax.plot([], [])
-        self.canvas = FigureCanvasTkAgg(self.fig, master=master)
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
+        # 创建画布但暂不显示
+        self.canvas = FigureCanvasTkAgg(self.fig, master=master)
+        self.widget = self.canvas.get_tk_widget()
+
+        # 根据显示参数决定初始状态
+        if self.show:
+            self.widget.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+        # 数据存储
         self.episodes = []
         self.rewards = []
 
+    def set_visibility(self, visible):
+        """设置可视化显示状态的方法"""
+        self.show = visible
+        if self.show:
+            self.widget.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        else:
+            self.widget.pack_forget()  # 移除画布显示
+
     def update_plot(self, episode, reward):
+        """更新图表（无论是否显示都保持更新）"""
         self.episodes.append(episode)
         self.rewards.append(reward)
         self.line.set_data(self.episodes, self.rewards)
         self.ax.relim()
         self.ax.autoscale_view()
-        self.canvas.draw()
+        if self.show:  # 仅在显示状态下刷新
+            self.canvas.draw()
 
 
 class GridWorldGUI:
-    def __init__(self, master, grid_size=10):
+    def __init__(self, master, grid_size=10, show=True):
         self.master = master
         self.grid_size = grid_size
-        self.cell_size = 20
+        self.cell_size = 40
         self.obstacles = np.zeros((grid_size, grid_size), dtype=bool)
 
         # 加载地图数据
@@ -69,7 +88,7 @@ class GridWorldGUI:
         self.setup_ui()
         self.env = Environment(grid_size=grid_size)
         self.env.obstacles = self.obstacles
-        self.visualizer = TrainingVisualizer(self.right_panel)
+        self.visualizer = TrainingVisualizer(self.right_panel, show_visualizer=show)
         # 立即绘制加载的地图
         self.draw_loaded_map()
 
