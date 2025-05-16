@@ -59,7 +59,7 @@ class GridWorldGUI:
     def __init__(self, master, grid_size=10, show=True):
         self.master = master
         self.grid_size = grid_size
-        self.cell_size = 40
+        self.cell_size = 80
         self.obstacles = np.zeros((grid_size, grid_size), dtype=bool)
 
         # 加载地图数据
@@ -71,14 +71,18 @@ class GridWorldGUI:
             obstacles=self.obstacles,
             render_mode="human"
         )
-
+        self.install_mode = True
+        self.custom_start = None
+        self.custom_targets = []
         # 颜色配置
         self.colors = {
             "obstacle": "#2c3e50",
             "empty": "#ecf0f1",
             "grid_line": "#bdc3c7"
         }
-
+        # 新增属性存储自定义起点和目标点
+        self.custom_start = None
+        self.custom_targets = []
         # 训练控制
         self.training = False
         self.should_stop = False
@@ -150,14 +154,51 @@ class GridWorldGUI:
                                         command=self.stop_testing, state=tk.DISABLED)
         self.stop_test_btn.pack(pady=5)
         ttk.Button(control_frame, text="Clear Map", command=self.clear_map).pack(pady=5)
-
+        # 新增Install按钮
+        ttk.Button(control_frame, text="Install", command=self.start_install_test).pack(pady=5)
         # 状态显示
         self.status_var = tk.StringVar(value="Ready")
         ttk.Label(control_frame, textvariable=self.status_var).pack(pady=10)
 
-        # 绑定事件
+        # 修改事件绑定
         self.canvas.bind("<Button-1>", self.toggle_cell)
+        self.canvas.bind("<Button-2>", self.set_start_pos)  # 中键设置起点
+        self.canvas.bind("<Button-3>", self.add_target_pos)  # 右键添加目标点
         self.canvas.bind("<B1-Motion>", self.toggle_cell)
+
+    # 新增方法
+    def set_start_pos(self, event):
+        """中键设置起始位置"""
+        # 转换坐标
+        x = event.y // self.cell_size
+        y = event.x // self.cell_size
+        if 0 <= x < self.grid_size and 0 <= y < self.grid_size:
+            # 清除旧起点
+            if self.custom_start:
+                old_x, old_y = self.custom_start
+                self.canvas.itemconfig(self.grid_rects[old_x, old_y],
+                                       fill=self.colors["empty"])
+
+            # 设置新起点
+            self.custom_start = (x, y)
+            self.canvas.itemconfig(self.grid_rects[x, y], fill="#FFA500")  # 橙色表示起点
+
+    def add_target_pos(self, event):
+        """右键添加目标点"""
+        # 转换坐标
+        x = event.y // self.cell_size
+        y = event.x // self.cell_size
+        if 0 <= x < self.grid_size and 0 <= y < self.grid_size:
+            # 如果是障碍物则清除
+            if (x, y) in self.custom_targets:
+                # 移除目标点
+                self.custom_targets.remove((x, y))
+                self.canvas.itemconfig(self.grid_rects[x, y], fill=self.colors["empty"])
+            else:
+                # 添加目标点（最多5个）
+                if (x, y) not in self.custom_targets and len(self.custom_targets) < 5:
+                    self.custom_targets.append((x, y))
+                    self.canvas.itemconfig(self.grid_rects[x, y], fill="#4CAF50")  # 绿色
 
     def init_grid(self):
         """初始化网格并存储矩形引用"""
@@ -175,6 +216,36 @@ class GridWorldGUI:
                     outline=self.colors["grid_line"]
                 )
                 self.grid_rects[x, y] = rect
+
+    def start_install_test(self):
+        """执行安装测试"""
+        if not self.custom_start or len(self.custom_targets) == 0:
+            self.status_var.set("Please set start and targets first!")
+            return
+
+        if not self.testing:
+            self.testing = True
+            self.should_stop_testing = False
+            self.stop_test_btn.config(state=tk.NORMAL)
+            self.status_var.set("Install Testing...")
+
+            # 传递自定义配置给测试器
+            threading.Thread(target=self.run_install_test, daemon=True).start()
+
+    def run_install_test(self):
+        try:
+            # 自定义测试器
+            tester = test.InstallTester(
+                self.env,
+                start_pos=self.custom_start,
+                target_pos=self.custom_targets
+            )
+            tester.run(
+                stop_callback=lambda: self.should_stop_testing,
+                status_callback=lambda *args: self.update_test_status(*args)
+            )
+        finally:
+            self.master.after(0, self.on_testing_end)
 
     def toggle_cell(self, event):
         """切换单元格状态（障碍物/空地）"""
@@ -216,7 +287,7 @@ class GridWorldGUI:
             self.testing = True
             self.should_stop_testing = False
             self.stop_test_btn.config(state=tk.NORMAL)
-            self.status_var.set("Testing...")
+            self.status_var.set("Random Testing...")
             threading.Thread(target=self.run_testing, daemon=True).start()
 
     def stop_testing(self):

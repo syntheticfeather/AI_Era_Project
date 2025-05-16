@@ -22,7 +22,7 @@ COLORS = {
 class Environment:
     def __init__(self, grid_size=10, obstacle_density=0.2, render_mode="human", obstacles=None):
         self.grid_size = grid_size
-        self.cell_size = 40
+        self.cell_size = 80
         self.window_size = self.grid_size * self.cell_size
         self.obstacle_density = obstacle_density
         self.render_mode = render_mode
@@ -108,10 +108,14 @@ class Environment:
             if not self.obstacles[pos[0], pos[1]]:
                 return pos
 
-    def reset(self):
-        self.agent_pos = self._random_free_position()
-        self.target_pos = self._random_free_position()
-        self.visited_positions = [self.agent_pos]  # 重置路径记录
+    def reset(self, keep_pos=False, clear_visited=True):
+        if keep_pos:  # 安装测试模式
+            self.agent_pos = self.agent_pos  # 保持当前位置
+        else:
+            self.agent_pos = self._random_free_position()
+            self.target_pos = self._random_free_position()
+        if clear_visited:
+            self.visited_positions = []  # 重置路径记录
         self.position_memory = {}  # 重置记忆
         return self.get_state()
 
